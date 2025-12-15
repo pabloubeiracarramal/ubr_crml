@@ -2,6 +2,8 @@
 import ThreeScene from "../components/ThreeScene.astro";
 import "../styles/global.css";
 import "../styles/index.css";
+import Header from "../components/Header.astro";
+import Side from "../components/Side.astro";
 ---
 
 <html lang="en">
@@ -13,41 +15,10 @@ import "../styles/index.css";
 		<title>ubr_crml_</title>
 	</head>
 	<body>
+		<Header />
 		<section class="hero">
-			<div class="resume">
-				<div class="resume-section">
-					<h2>CURRENTLY</h2>
-					<p>Senior software engineer at SDG Group</p>
-				</div>
-				<div class="resume-section">
-					<h2>I CAN HELP WITH</h2>
-					<p>React frontends</p>
-					<p>Node.js backends</p>
-					<p>Software architecture</p>
-				</div>
-				<div class="resume-section">
-					<h2>PAST</h2>
-					<p>Computer science degree at USC</p>
-					<p>CaixaBank Accounting Platform. Front-end technical lead</p>
-					<p>J&J Manufacture plant software. Full-stack developer</p>
-					<p>React chapter lead at SDG Group</p>
-				</div>
-				<div class="resume-section">
-					<h2>CURRENT INTERESTS</h2>
-					<p>Padel & Golf</p>
-					<p>Astro</p>
-					<p>Electronics</p>
-					<p>Three.js</p>
-					<p>3D Printing</p>
-					<p>Cloudless DevOps</p>
-					<p>Painting Model Cars</p>
-				</div>
-			</div>
+			<Side />
 			<ThreeScene />
-			<div>
-				<h1>pablo ubeira carramal</h1>
-				<p>software engineer</p>
-			</div>
 		</section>
 	</body>
 </html>

@@ -4,22 +4,37 @@
 const { title = "My 3D Scene" } = Astro.props;
 ---
 
-<div class="scene-container" data-title={title}></div>
+<div class="scene-container" data-title={title}>
+  <div class="fps-counter">FPS: 0</div>
+</div>
 
 <style>
   /* Ensure the container has size, otherwise the canvas will be 0px height */
   .scene-container {
     width: 100%;
-    height: 100%; /* Or 100vh for full screen */
+    /* height: 100%; Or 100vh for full screen */
     /* background: #ADFF2F;  */
     overflow: hidden;
     border-radius: 1rem;
+    padding: 2REM;
+
+    flex: 6;
+    position: relative;
+  }
+
+  .fps-counter {
+    position: absolute;
+    color: #ffffff33;
+    top: 1rem;
+    right: 2rem;
+    font-size: 1rem;
+    z-index: 10;
+    pointer-events: none;
   }
 </style>
 
 <script>
   import * as THREE from "three";
-  import { AsciiEffect } from "three/addons/effects/AsciiEffect.js";
   import { OBJLoader } from "three/addons/loaders/OBJLoader.js";
 
   // ==========================================
@@ -28,11 +43,16 @@ const { title = "My 3D Scene" } = Astro.props;
 
   // Vertical resolution (how many rows of text fit on screen)
   // Lower = bigger text, higher = smaller text
-  const ROWS = 100;
+  const ROWS = 60;
 
   // Calculate columns based on aspect ratio so characters remain square
   const aspectRatio = window.innerWidth / window.innerHeight;
   const COLS = Math.floor(ROWS * aspectRatio);
+
+  // Bloom effect configuration
+  const BLOOM_THRESHOLD = 0.5; // Brightness threshold (0.0 - 1.0) - lower = more pixels glow
+  const BLOOM_RADIUS = 4.0; // Blur radius (4.0 - 32.0) - higher = wider glow
+  const BLOOM_STRENGTH = 2.5; // Bloom intensity (0.5 - 3.0) - higher = brighter glow
 
   // ==========================================
   // 2. PROCEDURAL FONT TEXTURE GENERATOR
@@ -45,7 +65,7 @@ const { title = "My 3D Scene" } = Astro.props;
 
     // The palette of characters.
     // Index 0 (space) is for black pixels. Last index (@) is for bright pixels.
-    const charSet = " .,:-=+*#%@";
+    const charSet = " .,:;-~+=*#%@";
 
     const fontWidth = 64; // High res for crisp text
     const fontHeight = 64;
@@ -113,19 +133,12 @@ const { title = "My 3D Scene" } = Astro.props;
 
     // Add a point light for additional depth
     const pointLight = new THREE.PointLight(0xffffff, 50);
-    pointLight.position.set(20, 50,-20);
+    pointLight.position.set(20, 50, -20);
     scene.add(pointLight);
-    
+
     // Add ambient light for softer overall illumination
     const ambientLight = new THREE.AmbientLight(0xffffff, 3);
     scene.add(ambientLight);
-
-    // Create a spinning Torus Knot 
-    // We use MeshNormalMaterial because it produces vibrant colors automatically
-    const geometry = new THREE.TorusKnotGeometry(1.2, 0.4, 100, 16);
-    const material = new THREE.MeshNormalMaterial(); 
-    const torus = new THREE.Mesh(geometry, material);
-    // scene.add(torus);
 
     // Add object - store reference for animation
     let plantModel = null;
@@ -133,7 +146,7 @@ const { title = "My 3D Scene" } = Astro.props;
       "/models/plant.obj",
       function (object) {
         console.log("Model loaded:", object);
-        
+
         // Apply green material to all meshes
         object.traverse((child) => {
           if (child.isMesh) {
@@ -141,14 +154,14 @@ const { title = "My 3D Scene" } = Astro.props;
               color: 0x66ff00,
               side: THREE.DoubleSide,
               roughness: 0.25,
-              metalness: 0.75
+              metalness: 0.75,
             });
           }
         });
-        
+
         object.position.set(0, 0, 0);
         object.scale.set(1, 1, 1);
-        
+
         plantModel = object;
         scene.add(object);
       },
@@ -167,7 +180,7 @@ const { title = "My 3D Scene" } = Astro.props;
       alpha: true, // Transparent background (lets CSS background show)
     });
     renderer.setSize(container.clientWidth, container.clientHeight);
-    // renderer.setPixelRatio(window.devicePixelRatio); // Sharpness on Retina screens
+    renderer.setPixelRatio(window.devicePixelRatio); // Sharpness on Retina screens
     container.appendChild(renderer.domElement);
 
     // ==========================================
@@ -286,39 +299,206 @@ const { title = "My 3D Scene" } = Astro.props;
     postScene.add(plane);
 
     // ==========================================
-    // 6. MOUSE TRACKING
+    // 6. SETUP BLOOM BUFFERS
+    // ==========================================
+    const bloomTarget = new THREE.WebGLRenderTarget(
+      container.clientWidth,
+      container.clientHeight,
+      {
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        format: THREE.RGBAFormat,
+      },
+    );
+
+    const blurTargetH = new THREE.WebGLRenderTarget(
+      container.clientWidth,
+      container.clientHeight,
+      {
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        format: THREE.RGBAFormat,
+      },
+    );
+
+    const blurTargetV = new THREE.WebGLRenderTarget(
+      container.clientWidth,
+      container.clientHeight,
+      {
+        minFilter: THREE.LinearFilter,
+        magFilter: THREE.LinearFilter,
+        format: THREE.RGBAFormat,
+      },
+    );
+
+    // ==========================================
+    // 7. SETUP BLOOM EXTRACTION SHADER
+    // ==========================================
+    const brightnessMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        tDiffuse: { value: null },
+        threshold: { value: BLOOM_THRESHOLD },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float threshold;
+        varying vec2 vUv;
+        
+        void main() {
+          vec4 color = texture2D(tDiffuse, vUv);
+          float luminance = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+          
+          // Extract only bright areas
+          if (luminance > threshold) {
+            gl_FragColor = color;
+          } else {
+            gl_FragColor = vec4(0.0);
+          }
+        }
+      `,
+    });
+
+    // ==========================================
+    // 8. SETUP GAUSSIAN BLUR SHADER
+    // ==========================================
+    const blurMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        tDiffuse: { value: null },
+        direction: { value: new THREE.Vector2(1.0, 0.0) },
+        resolution: {
+          value: new THREE.Vector2(
+            container.clientWidth,
+            container.clientHeight,
+          ),
+        },
+        radius: { value: BLOOM_RADIUS }, // Add this - increase for wider blur
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform vec2 direction;
+        uniform vec2 resolution;
+        uniform float radius;
+        varying vec2 vUv;
+        
+        void main() {
+          // 9-tap Gaussian blur with adjustable radius
+          vec2 offset = (direction * radius) / resolution;
+          
+          vec4 color = vec4(0.0);
+          color += texture2D(tDiffuse, vUv - offset * 4.0) * 0.05;
+          color += texture2D(tDiffuse, vUv - offset * 3.0) * 0.09;
+          color += texture2D(tDiffuse, vUv - offset * 2.0) * 0.12;
+          color += texture2D(tDiffuse, vUv - offset * 1.0) * 0.15;
+          color += texture2D(tDiffuse, vUv) * 0.16;
+          color += texture2D(tDiffuse, vUv + offset * 1.0) * 0.15;
+          color += texture2D(tDiffuse, vUv + offset * 2.0) * 0.12;
+          color += texture2D(tDiffuse, vUv + offset * 3.0) * 0.09;
+          color += texture2D(tDiffuse, vUv + offset * 4.0) * 0.05;
+          
+          gl_FragColor = color;
+        }
+      `,
+    });
+
+    // ==========================================
+    // 9. SETUP COMPOSITE SHADER (Combine ASCII + Bloom)
+    // ==========================================
+
+    const compositeMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        tDiffuse: { value: null },
+        tBloom: { value: null },
+        bloomStrength: { value: BLOOM_STRENGTH },
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform sampler2D tBloom;
+        uniform float bloomStrength;
+        varying vec2 vUv;
+        
+        void main() {
+          vec4 original = texture2D(tDiffuse, vUv);
+          vec4 bloom = texture2D(tBloom, vUv);
+          
+          // Add bloom on top of original
+          gl_FragColor = original + bloom * bloomStrength;
+        }
+      `,
+    });
+
+    // Create scenes for each pass
+    const brightnessScene = new THREE.Scene();
+    brightnessScene.add(
+      new THREE.Mesh(new THREE.PlaneGeometry(2, 2), brightnessMaterial),
+    );
+
+    const blurScene = new THREE.Scene();
+    blurScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), blurMaterial));
+
+    const compositeScene = new THREE.Scene();
+    compositeScene.add(
+      new THREE.Mesh(new THREE.PlaneGeometry(2, 2), compositeMaterial),
+    );
+
+    // ==========================================
+    // 10. MOUSE TRACKING
     // ==========================================
     const mouse = new THREE.Vector2(-10, -10);
-    
-    container.addEventListener('mousemove', (event) => {
+
+    container.addEventListener("mousemove", (event) => {
       const rect = container.getBoundingClientRect();
       // Normalize mouse coordinates to 0-1 range
       mouse.x = (event.clientX - rect.left) / rect.width;
       mouse.y = 1.0 - (event.clientY - rect.top) / rect.height; // Flip Y
       shaderMaterial.uniforms.mouse.value.copy(mouse);
     });
-    
-    container.addEventListener('mouseleave', () => {
+
+    container.addEventListener("mouseleave", () => {
       // Move mouse off screen when leaving canvas
       mouse.set(-10, -10);
       shaderMaterial.uniforms.mouse.value.copy(mouse);
     });
 
     // ==========================================
-    // 7. RENDER LOOP
+    // 11. RENDER LOOP
     // ==========================================
     const clock = new THREE.Clock();
+    
+    // FPS Counter
+    const fpsCounter = container.querySelector('.fps-counter');
+    let frameCount = 0;
+    let lastTime = performance.now();
+    
     function animate() {
       requestAnimationFrame(animate);
 
       const delta = clock.getDelta();
-      
+
       // Update time uniform for wave animation
       shaderMaterial.uniforms.time.value = clock.getElapsedTime();
 
       // --- Update 3D Scene ---
-      
-      // Rotate the plant model if loaded
       if (plantModel) {
         plantModel.rotation.y += delta * 0.5;
       }
@@ -327,24 +507,65 @@ const { title = "My 3D Scene" } = Astro.props;
       renderer.setRenderTarget(renderTarget);
       renderer.render(scene, camera);
 
-      // --- Pass 2: Render Buffer to Screen (ASCII Effect) ---
-      renderer.setRenderTarget(null);
+      // --- Pass 2: Render ASCII Effect to Bloom Buffer ---
+      renderer.setRenderTarget(bloomTarget);
       renderer.render(postScene, postCamera);
+
+      // --- Pass 3: Extract Bright Pixels ---
+      brightnessMaterial.uniforms.tDiffuse.value = bloomTarget.texture;
+      renderer.setRenderTarget(blurTargetH);
+      renderer.render(brightnessScene, postCamera);
+
+      // --- Pass 4: Horizontal Blur ---
+      blurMaterial.uniforms.tDiffuse.value = blurTargetH.texture;
+      blurMaterial.uniforms.direction.value.set(1.0, 0.0);
+      renderer.setRenderTarget(blurTargetV);
+      renderer.render(blurScene, postCamera);
+
+      // --- Pass 5: Vertical Blur ---
+      blurMaterial.uniforms.tDiffuse.value = blurTargetV.texture;
+      blurMaterial.uniforms.direction.value.set(0.0, 1.0);
+      renderer.setRenderTarget(blurTargetH);
+      renderer.render(blurScene, postCamera);
+
+      // --- Pass 6: Composite (ASCII + Bloom) to Screen ---
+      compositeMaterial.uniforms.tDiffuse.value = bloomTarget.texture;
+      compositeMaterial.uniforms.tBloom.value = blurTargetH.texture;
+      renderer.setRenderTarget(null);
+      renderer.render(compositeScene, postCamera);
+      
+      // --- Update FPS Counter ---
+      frameCount++;
+      const currentTime = performance.now();
+      if (currentTime >= lastTime + 1000) {
+        if (fpsCounter) {
+          fpsCounter.textContent = `FPS: ${frameCount}`;
+        }
+        frameCount = 0;
+        lastTime = currentTime;
+      }
     }
 
     animate();
 
     // Handle Window Resize
     window.addEventListener("resize", () => {
-      // Update Camera
       const newAspect = window.innerWidth / window.innerHeight;
       camera.aspect = newAspect;
       camera.updateProjectionMatrix();
 
-      // Update Renderer
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setSize(container.clientWidth, container.clientHeight);
 
-      // Update Grid (Keep characters square)
+      // Update all bloom buffers
+      bloomTarget.setSize(container.clientWidth, container.clientHeight);
+      blurTargetH.setSize(container.clientWidth, container.clientHeight);
+      blurTargetV.setSize(container.clientWidth, container.clientHeight);
+      blurMaterial.uniforms.resolution.value.set(
+        container.clientWidth,
+        container.clientHeight,
+      );
+
+      // Update Grid
       const newCols = Math.floor(ROWS * newAspect);
       renderTarget.setSize(newCols, ROWS);
       shaderMaterial.uniforms.gridSize.value.set(newCols, ROWS);

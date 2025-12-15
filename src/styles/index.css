@@ -1,28 +1,9 @@
 /* src/styles/index.css */
 .hero {
     width: 100%;
-    height: 100vh;
+    flex: 1;
     overflow: hidden;
     position: relative;
-
-    padding: 5rem;
-
     display: flex;
-    gap : 2rem;
-
-    .resume {
-        display: flex;
-        flex-direction: column;
-        gap: 2rem;
-    }
-
-    h2 {
-        color: #FFFFFF66;
-    }
-
-    .resume-section p {
-        display: list-item;
-        list-style-type: disc;
-        list-style-position: outside;
-    }
+    gap: 0;
 }

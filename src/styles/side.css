@@ -1,0 +1,54 @@
+.sidebar {
+    width: 20%;
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+    border-right: solid 1px #FFFFFF33;
+    padding: 2rem;
+    overflow-y: auto;
+
+    .section {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+
+        &:hover {
+            .header {
+                color: #99FF9999;
+                text-shadow: 0 0 10px #99FF99, 0 0 20px #99FF9966;
+            }
+        }
+
+    }
+
+    
+
+    .header {
+        color: #FFFFFF66;
+        margin-bottom: 0.5rem;
+        letter-spacing: 0.05em;
+    }
+
+    .item {
+        color: #FFFFFF;
+        padding-left: 0.5rem;
+        font-size: 0.9rem;
+        line-height: 1.8;
+        transition: all 0.3s ease;
+
+        &:hover {
+            color: #99FF9999;
+            &::before {
+                color: #99FF99;
+                text-shadow: 0 0 8px #99FF99;
+            }
+        }
+
+    }
+
+    .item::before {
+        color: #FFFFFF66;
+        padding-right: 0.4rem;
+        content: '> ';
+    }
+}

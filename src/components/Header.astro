@@ -1,0 +1,33 @@
+---
+import "../styles/header.css";
+---
+
+<header>
+    <div class="name">
+        <h1>pablo ubeira carramal <span class="cursor">_</span></h1>
+        <p>// senior software engineer</p>
+    </div>
+    <div class="status">
+        <p>LOC: Vigo, ES</p>
+        <p>STATUS: Open to offers</p>
+        <p id="network-usage">RTT: Measuring...</p>
+    </div>
+</header>
+
+<script>
+    async function measureLatency() {
+        const element = document.getElementById('network-usage');
+        
+        try {
+            const start = performance.now();
+            await fetch(window.location.href, { method: 'HEAD', cache: 'no-cache' });
+            const latency = Math.round(performance.now() - start);
+            element!.textContent = `RTT: ${latency}ms`;
+        } catch {
+            element!.textContent = 'RTT: Offline';
+        }
+    }
+    
+    measureLatency();
+    setInterval(measureLatency, 5000);
+</script>
