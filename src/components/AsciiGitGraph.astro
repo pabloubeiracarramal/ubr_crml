@@ -1,0 +1,191 @@
+---
+/* src/components/AsciiGitGraph.astro */
+interface Project {
+    name: string;
+    hash: string;
+    tag?: string;
+    colorClass: string; // e.g., 'is-green', 'is-blue', 'is-gray'
+}
+
+interface Props {
+    projects?: Project[];
+}
+
+const { projects = [
+    {
+        name: "ubr_crml",
+        hash: "8f4a12",
+        tag: "HEAD",
+        colorClass: "is-green",
+    },
+    {
+        name: "moneyguesser",
+        hash: "2b9c01",
+        colorClass: "is-blue",
+    },
+    {
+        name: "granitos",
+        hash: "7d3e11",
+        colorClass: "is-gray",
+    },
+    
+] } = Astro.props;
+---
+
+<div class="ascii-graph-container">
+    {projects.map((project, index) => {
+        const isFirst = index === 0;
+        const isLast = index === projects.length - 1;
+        const isMiddle = !isFirst && !isLast;
+        
+        return (
+            <>
+                {/* Main project row */}
+                <div class="row">
+                    <div class="meta">
+                        {project.tag && (
+                            <span class={`tag ${project.colorClass}`}>{project.tag}</span>
+                        )}
+                        <span class="name">{project.name}</span>
+                        <span class="hash">[{project.hash}]</span>
+                    </div>
+                    <div class="graph">
+                        {isFirst ? (
+                            <>
+                                <span class={`dot ${project.colorClass}`}>●</span>
+                                <span class="line">│</span>
+                            </>
+                        ) : isMiddle ? (
+                            <>
+                                <span class={`dot ${project.colorClass}`}>●</span>
+                                <span class="line">─</span>
+                                <span class="line">─</span>
+                                <span class="line">┤</span>
+                                <span class="line">│</span>
+                            </>
+                        ) : (
+                            <>
+                                <span class="line">╰</span>
+                                <span class="line">─</span>
+                                <span class={`dot ${project.colorClass}`}>●</span>
+                                <span class="line">│</span>
+                            </>
+                        )}
+                    </div>
+                </div>
+
+                {/* Connector row - skip after last project */}
+                {!isLast && (
+                    <div class="row connector">
+                        <div class="meta"></div>
+                        <div class="graph">
+                            {isFirst ? (
+                                <>
+                                    <span class="line">│</span>
+                                    <span class="line">│</span>
+                                </>
+                            ) : (
+                                <span class="line">│</span>
+                            )}
+                        </div>
+                    </div>
+                )}
+
+                {/* Fading line after last project */}
+                {isLast && (
+                    <>
+                        <div class="row connector">
+                            <div class="meta"></div>
+                            <div class="graph">
+                                <span class="line">│</span>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="meta"></div>
+                            <div class="graph">
+                                <span class="line fading">│</span>
+                            </div>
+                        </div>
+                    </>
+                )}
+            </>
+        );
+    })}
+</div>
+
+<style>
+    .ascii-graph-container {
+        font-size: 16px;
+        line-height: 16px; /* Tighter leading to connect vertical lines */
+        text-align: right;
+        color: #666;
+        user-select: none; /* Feels more like UI */
+        position: absolute;
+        bottom: 1rem;
+        right: 2rem;
+    }
+
+    .row {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        height: 24px; /* Fixed height cells */
+    }
+
+    /* The Text Info Area */
+    .meta {
+        margin-right: 12px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+    }
+
+    .name {
+        color: #fff;
+    }
+    .hash {
+        color: #444;
+        font-size: 0.8em;
+    }
+
+    /* The Graph Area (Right side) */
+    .graph {
+        width: 60px; /* Fixed width column for the tree */
+        display: flex;
+        justify-content: flex-end;
+        font-weight: bold; /* Thicker lines */
+    }
+
+    /* Character Coloring */
+    .dot {
+        margin: 0 2px;
+    } /* Tiny adjustment for bullet alignment */
+    .is-green {
+        color: #4ade80;
+        text-shadow: 0 0 5px #4ade80;
+    }
+    .is-blue {
+        color: #60a5fa;
+    }
+    .is-gray {
+        color: #555;
+    }
+
+    .tag {
+        background: #222;
+        color: #4ade80;
+        font-size: 10px;
+        padding: 2px 4px;
+        border: 1px solid #4ade80;
+    }
+
+    .connector {
+        height: 12px;
+    } /* Shorter rows for vertical gaps */
+
+    .fading {
+        background: linear-gradient(to bottom, #666, transparent);
+        -webkit-background-clip: text;
+        color: transparent;
+    }
+</style>
