@@ -141,7 +141,7 @@ const { title = "My 3D Scene" } = Astro.props;
     scene.add(ambientLight);
 
     // Add object - store reference for animation
-    let plantModel = null;
+    let plantModel: THREE.Group | null = null;
     loader.load(
       "/models/plant.obj",
       function (object) {
@@ -149,7 +149,7 @@ const { title = "My 3D Scene" } = Astro.props;
 
         // Apply green material to all meshes
         object.traverse((child) => {
-          if (child.isMesh) {
+          if (child instanceof THREE.Mesh) {
             child.material = new THREE.MeshStandardMaterial({
               color: 0x66ff00,
               side: THREE.DoubleSide,
@@ -466,11 +466,12 @@ const { title = "My 3D Scene" } = Astro.props;
     // ==========================================
     const mouse = new THREE.Vector2(-10, -10);
 
-    container.addEventListener("mousemove", (event) => {
+    container.addEventListener("mousemove", (event: Event) => {
+      const mouseEvent = event as MouseEvent;
       const rect = container.getBoundingClientRect();
       // Normalize mouse coordinates to 0-1 range
-      mouse.x = (event.clientX - rect.left) / rect.width;
-      mouse.y = 1.0 - (event.clientY - rect.top) / rect.height; // Flip Y
+      mouse.x = (mouseEvent.clientX - rect.left) / rect.width;
+      mouse.y = 1.0 - (mouseEvent.clientY - rect.top) / rect.height; // Flip Y
       shaderMaterial.uniforms.mouse.value.copy(mouse);
     });
 

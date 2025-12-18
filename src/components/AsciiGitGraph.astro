@@ -1,116 +1,99 @@
----
-/* src/components/AsciiGitGraph.astro */
-interface Project {
-    name: string;
-    hash: string;
-    tag?: string;
-    colorClass: string; // e.g., 'is-green', 'is-blue', 'is-gray'
-}
-
-interface Props {
-    projects?: Project[];
-}
-
-const { projects = [
-    {
-        name: "ubr_crml",
-        hash: "8f4a12",
-        tag: "HEAD",
-        colorClass: "is-green",
-    },
-    {
-        name: "moneyguesser",
-        hash: "2b9c01",
-        colorClass: "is-blue",
-    },
-    {
-        name: "granitos",
-        hash: "7d3e11",
-        colorClass: "is-gray",
-    },
-    
-] } = Astro.props;
----
-
 <div class="ascii-graph-container">
-    {projects.map((project, index) => {
-        const isFirst = index === 0;
-        const isLast = index === projects.length - 1;
-        const isMiddle = !isFirst && !isLast;
-        
-        return (
-            <>
-                {/* Main project row */}
-                <div class="row">
-                    <div class="meta">
-                        {project.tag && (
-                            <span class={`tag ${project.colorClass}`}>{project.tag}</span>
-                        )}
-                        <span class="name">{project.name}</span>
-                        <span class="hash">[{project.hash}]</span>
-                    </div>
-                    <div class="graph">
-                        {isFirst ? (
-                            <>
-                                <span class={`dot ${project.colorClass}`}>●</span>
-                                <span class="line">│</span>
-                            </>
-                        ) : isMiddle ? (
-                            <>
-                                <span class={`dot ${project.colorClass}`}>●</span>
-                                <span class="line">─</span>
-                                <span class="line">─</span>
-                                <span class="line">┤</span>
-                                <span class="line">│</span>
-                            </>
-                        ) : (
-                            <>
-                                <span class="line">╰</span>
-                                <span class="line">─</span>
-                                <span class={`dot ${project.colorClass}`}>●</span>
-                                <span class="line">│</span>
-                            </>
-                        )}
-                    </div>
-                </div>
+    <!-- ubr_crml project -->
+    <div class="row">
+        <div class="meta">
+            <span class="tag is-green">HEAD</span>
+            <span class="name">ubr_crml</span>
+            <span class="hash">[8f4a12]</span>
+        </div>
+        <div class="graph">
+            <span class="dot is-gray">●</span>
+        </div>
+    </div>
 
-                {/* Connector row - skip after last project */}
-                {!isLast && (
-                    <div class="row connector">
-                        <div class="meta"></div>
-                        <div class="graph">
-                            {isFirst ? (
-                                <>
-                                    <span class="line">│</span>
-                                    <span class="line">│</span>
-                                </>
-                            ) : (
-                                <span class="line">│</span>
-                            )}
-                        </div>
-                    </div>
-                )}
+    <div class="row">
+        <div class="graph">
+            <span class="line">╭</span>
+            <span class="line">─</span>
+            <span class="line">┤</span>
+        </div>
+    </div>
 
-                {/* Fading line after last project */}
-                {isLast && (
-                    <>
-                        <div class="row connector">
-                            <div class="meta"></div>
-                            <div class="graph">
-                                <span class="line">│</span>
-                            </div>
-                        </div>
-                        <div class="row">
-                            <div class="meta"></div>
-                            <div class="graph">
-                                <span class="line fading">│</span>
-                            </div>
-                        </div>
-                    </>
-                )}
-            </>
-        );
-    })}
+    <!-- moneyguesser project -->
+    <div class="row">
+        <div class="meta">
+            <span class="name">moneyguesser</span>
+            <span class="hash">[2b9c01]</span>
+        </div>
+        <div class="graph">
+            <span class="dot is-gray">●</span>
+            <span class="line">&nbsp;</span>
+            <span class="line">│</span>
+        </div>
+    </div>
+
+    <div class="row ">
+        <div class="meta"></div>
+        <div class="graph">
+            <span class="line">│</span>
+            <span class="line">&nbsp;</span>
+            <span class="line">│</span>
+        </div>
+    </div>
+
+    <!-- granitos project -->
+    <div class="row">
+        <div class="meta">
+            <span class="name">granitos</span>
+            <span class="hash">[7d3e11]</span>
+        </div>
+        <div class="graph">
+            <span class="dot is-gray">●</span>
+            <span class="line">&nbsp;</span>
+            <span class="line">│</span>
+        </div>
+    </div>
+
+    <div class="row ">
+        <div class="meta"></div>
+        <div class="graph">
+            <span class="line">│</span>
+            <span class="line">&nbsp;</span>
+            <span class="line">│</span>
+        </div>
+    </div>
+
+    <!-- nobi project -->
+    <div class="row">
+        <div class="meta">
+            <span class="name">NOBI</span>
+            <span class="hash">[2b9c01]</span>
+        </div>
+        <div class="graph">
+            <span class="dot is-gray">●</span>
+            <span class="line">&nbsp;</span>
+            <span class="line">│</span>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="graph">
+            <span class="line">╰</span>
+            <span class="line">─</span>
+            <span class="line">┤</span>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="meta">
+            <span class="branch">(origin/main)</span>
+            <span class="name">initial commit</span>
+            <span class="hash">[7d3e11]</span>
+        </div>
+        <div class="graph">
+            <span class="dot is-gray">●</span>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -146,6 +129,12 @@ const { projects = [
     .hash {
         color: #444;
         font-size: 0.8em;
+    }
+
+    .subtitle {
+        margin-right: 68px;
+        color: #666;
+        font-size: 0.9em;
     }
 
     /* The Graph Area (Right side) */
